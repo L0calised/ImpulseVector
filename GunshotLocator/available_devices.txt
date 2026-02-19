@@ -1,0 +1,27 @@
+0:Microsoft Sound Mapper - Input
+1:Microphone (USB PnP Sound Devic
+2:Headset (OnePlus Nord Buds 3)
+3:Microphone Array (2- Intel® Sma
+7:Primary Sound Capture Driver
+8:Microphone (USB PnP Sound Device)
+9:Headset (OnePlus Nord Buds 3)
+10:Microphone Array (2- Intel® Smart Sound Technology for Digital Microphones)
+16:Microphone (USB PnP Sound Device)
+17:Headset (OnePlus Nord Buds 3)
+18:Microphone Array (2- Intel® Smart Sound Technology for Digital Microphones)
+19:Microphone 1 (Realtek HD Audio Mic input with SST)
+20:Microphone 2 (Realtek HD Audio Mic input with SST)
+23:PC Speaker (Realtek HD Audio 2nd output with SST)
+26:PC Speaker (Realtek HD Audio output with SST)
+27:Stereo Mix (Realtek HD Audio Stereo input)
+28:Headset (@System32\drivers\bthhfenum.sys,#2;%1 Hands-Free%0
+;(OnePlus Nord Buds 3))
+31:Input (@System32\drivers\bthhfenum.sys,#2;%1 Hands-Free%0
+;(OnePlus Nord Buds 3))
+34:Input (@System32\drivers\btha2dp.sys,#1;%1%0
+;(OnePlus Nord Buds 3))
+35:Microphone Array 1 ()
+36:Microphone Array 2 ()
+37:Microphone Array 3 ()
+41:Input ()
+42:Microphone (USB PnP Sound Device)

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunting Detection System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #222; color: white; margin: 0; }
+        .container { padding: 20px; max-width: 1200px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 20px; }
+        .status-box { background: #333; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        select { padding: 10px; margin-right: 10px; background: #444; color: white; border: none; }
+        button { padding: 10px 20px; background: #e74c3c; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #c0392b; }
+        #map { height: 500px; width: 100%; margin-top: 20px; border-radius: 8px; }
+        .blink { animation: blinker 1s linear infinite; color: red; font-weight: bold; }
+        @keyframes blinker { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>ANTI-POACHING TRACKER</h1>
+        <div id="system-status">System Status: <span style="color:orange">Waiting for Config</span></div>
+    </div>
+
+    <div class="status-box">
+        <h3>Hardware Setup</h3>
+        <p>Select the USB Microphones connected to the device:</p>
+        <label>Mic A (Top):</label> <select id="micA"></select>
+        <label>Mic B (Left):</label> <select id="micB"></select>
+        <label>Mic C (Right):</label> <select id="micC"></select>
+        <button onclick="saveConfig()">START TRACKING</button>
+    </div>
+
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    // Initialize Map (Centered on a dummy location)
+    var map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var gunshotMarker = L.marker([0, 0]).addTo(map);
+    var circle = L.circle([0, 0], { color: 'red', fillColor: '#f03', fillOpacity: 0.5, radius: 50 }).addTo(map);
+
+    // 1. Load Devices on Start
+    window.onload = function() {
+        axios.get('/get_devices').then(response => {
+            const devices = response.data;
+            const selects = ['micA', 'micB', 'micC'];
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                devices.forEach(dev => {
+                    let option = document.createElement("option");
+                    option.text = dev.name;
+                    option.value = dev.id;
+                    sel.add(option);
+                });
+            });
+        });
+    };
+
+    // 2. Save Configuration
+    function saveConfig() {
+        const payload = {
+            mic_a: document.getElementById('micA').value,
+            mic_b: document.getElementById('micB').value,
+            mic_c: document.getElementById('micC').value
+        };
+        axios.post('/save_config', payload).then(res => {
+            alert(res.data.message);
+            document.getElementById('system-status').innerHTML = "System Status: <span style='color:lightgreen'>ACTIVE MONITORING</span>";
+            startPolling();
+        });
+    }
+
+    // 3. Poll for Live Data (Every 1 second)
+    // 3. Poll for Live Data (Every 1 second)
+    function startPolling() {
+        setInterval(() => {
+            axios.get('/get_live_data').then(res => {
+                const data = res.data;
+                const statusDiv = document.getElementById('system-status');
+
+                if(data.status === "analyzing") {
+                    // C++ detected it, AI is thinking
+                    statusDiv.innerHTML = "Status: <span style='color:yellow' class='blink'>ANALYZING AUDIO...</span>";
+                    gunshotMarker.setLatLng([data.x, data.y]);
+                    circle.setLatLng([data.x, data.y]);
+                    circle.setStyle({color: 'yellow', fillColor: '#ffff00'});
+                    map.setView([data.x, data.y], 10);
+                }
+                else if (data.status === "confirmed") {
+                    // AI says YES
+                    statusDiv.innerHTML = "Status: <span style='color:red; font-weight:bold'>GUNSHOT CONFIRMED (" + data.confidence + "%)</span>";
+                    circle.setStyle({color: 'red', fillColor: '#f03'});
+
+                    // Flash the screen red (optional effect)
+                    document.body.style.backgroundColor = "#4a0000";
+                    setTimeout(() => { document.body.style.backgroundColor = "#222"; }, 500);
+                }
+                else if (data.status === "rejected") {
+                    // AI says NO
+                    statusDiv.innerHTML = "Status: <span style='color:gray'>False Alarm (Noise)</span>";
+                    circle.setStyle({color: 'gray', fillColor: '#ccc'});
+                }
+            });
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
