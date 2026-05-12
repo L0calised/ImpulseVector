@@ -1,3 +1,0 @@
-MIC_A=8
-MIC_B=3
-MIC_C=2

@@ -1,58 +1,142 @@
-# ImpulseVector 🎯
-**Real-Time Acoustic Triangulation & Machine Learning System for Anti-Poaching**
+# Triangulation Hunt
 
-ImpulseVector is a hybrid hardware and software system designed to instantly locate and verify illegal hunting activity in protected areas. By combining low-latency microphone arrays, Time Difference of Arrival (TDOA) physics, and Convolutional Neural Networks (CNNs), the system pinpoints the origin of a loud impulse and instantly verifies whether the sound was a legitimate gunshot or a false alarm (e.g., dog bark, vehicle, or jackhammer).
+Student prototype for detecting a loud event with 3 USB microphones, classifying whether it sounds like a gunshot, and showing a coarse source-direction hint on a small web dashboard.
 
-## 📌 System Architecture
+## Simplest setup
 
-The project is divided into three core layers:
+Edit only [config.py](/C:/Users/divya/Documents/Triangulation_Hunt/config.py), then run the Python files directly.
 
-1. **The Reflex (Hardware & C++):** A 3-microphone array deployed in an equilateral triangle. C++ handles ultra-low latency audio capture. When an acoustic impulse is detected, it calculates TDOA to triangulate the exact `(x, y)` coordinates and saves the audio snippet as a raw `.wav` file.
-2. **The Brain (Python & Machine Learning):** A highly trained CNN built with TensorFlow and Keras. The `watchdog.py` script monitors incoming audio, converts it into Mel-frequency cepstral coefficients (MFCCs) using Librosa, and outputs a confidence score to filter out "Hard Negatives" (sounds that mimic gunshots).
-3. **The Face (Web Dashboard):** A Python Flask backend coupled with an HTML5 `<canvas>` frontend. It receives real-time WebSocket alerts and instantly plots the triangulated gunshot on a visual radar grid.
+## What this prototype does
 
-## 📂 Project Structure
+- Lets you choose 3 microphones from a website
+- Records from all 3 microphones for one listening window
+- Runs a simple gunshot-vs-ambient classifier
+- Uses relative mic strength to estimate a coarse direction
+- Shows an alert and an approximate strongest-side pin on the dashboard
+
+## Project layout
+
+- `app.py`: Flask + Socket.IO dashboard backend
+- `audio_core.py`: recording, features, detection, distance estimation helpers
+- `record_data.py`: record ambient and clap-based gunshot-like samples
+- `record_distance.py`: record the 50-clap 3-mic calibration dataset
+- `train_model.py`: train gunshot classifier
+- `find_mics.py`: list input device ids
+- `templates/index.html`: dashboard UI
+
+## Recommended setup
+
+- Language: Python 3.11
+- IDE: VS Code
+- OS: Windows is fine for this prototype
+
+## Step 1: create the environment
+
+Open PowerShell in the project folder and run:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+## Step 2: find your microphone ids
+
+Run:
+
+```powershell
+python find_mics.py
+```
+
+Write down the ids for the 3 USB microphones you want to use.
+
+Then open [config.py](/C:/Users/divya/Documents/Triangulation_Hunt/config.py) and set:
+
+```python
+SINGLE_TRAINING_MIC_ID = 1
+ARRAY_MIC_IDS = [1, 2, 3]
+```
+
+## Step 3: record gunshot-like and ambient samples
+
+For a student prototype, using loud hand claps as the positive class is acceptable.
+
+Run:
+
+```powershell
+python record_data.py
+```
+
+This creates:
+
+- `data/train/gunshot`
+- `data/train/ambient`
+
+## Step 4: train the model
+
+Train the classifier:
+
+```powershell
+python train_model.py
+```
+
+Models saved:
+
+- `gunshot_classifier.pkl`
+
+## Step 5: run the website
+
+Start the server:
+
+```powershell
+python app.py
+```
+
+Then open:
 
 ```text
-/ImpulseVector
-├── /audio_data               # Training datasets
-│   ├── /gunshots             # Positive data (Class 6)
-│   └── /others               # Hard negative data (Dogs, drills, etc.)
-├── /incoming_audio           # Inbox for C++ to drop live .wav captures
-├── /web_dashboard            # Flask server and UI
-│   ├── app.py                # Web backend and WebSocket emitter
-│   └── /templates
-│       └── index.html        # Real-time radar UI
-├── gunshot_brain.h5          # Compiled Keras AI Model
-├── sort_files.py             # Preps UrbanSound8K dataset (Hard Negative Mining)
-├── train_model.py            # CNN architecture and training logic
-└── watchdog.py               # 24/7 monitor bridging C++ and the Web UI
+http://127.0.0.1:5000
+```
 
+## Step 6: test integration
 
-⚙️ Setup & Installation
-Prerequisites:
-Python 3.8+
-Visual Studio Code (Recommended
-Git
+1. Open the website
+2. Select the 3 microphones
+3. Click `Start Listening`
+4. Make a clap or play a test sound
+5. Check whether the website shows:
+   - classification result
+   - coarse direction
+   - approximate strongest-side pin
 
-1. Clone the Repository:
-git clone [https://github.com/L0calised/ImpulseVector.git](https://github.com/L0calised/ImpulseVector.git)
-cd ImpulseVector
-2. Install Python Dependencies:
-pip install numpy librosa tensorflow scikit-learn flask flask-socketio requests resampy
-3. Running the Prototype
-To test the software stack locally, you need two terminal windows running simultaneously.
+Debug recordings are saved in:
 
-Terminal 1: Start the Web Dashboard
-python web_dashboard/app.py
-Open your browser and navigate to http://localhost:5000 to view the radar grid.
+- `debug/mic1.wav`
+- `debug/mic2.wav`
+- `debug/mic3.wav`
 
-Terminal 2: Start the AI Watchdog
-python watchdog.py
-The watchdog is now monitoring the /incoming_audio folder.
+Use this plotter if needed:
 
-Simulate a Gunshot:
-Drag and drop a raw .wav audio file (containing a gunshot) into the /incoming_audio folder. The Watchdog will analyze it, and if the confidence score exceeds the threshold, the web dashboard will instantly flash red and plot the coordinates.
+```powershell
+python test_plotter.py
+```
 
-Dataset used for training the model
-Download the UrbanSound8K Dataset.
+## Important prototype limits
+
+- Three separate USB microphones on one laptop are not perfectly synchronized
+- Real gunshot detection needs much more data than hand claps
+- The direction hint is coarse and may be uncertain
+- Approximate location is only a strongest-side hint, not real triangulation
+
+## How direction works here
+
+The dashboard compares relative signal strength across the three microphones and reports a coarse direction such as `front`, `left`, `right`, `front-left`, or `front-right`. Because the microphones are separate USB devices, timing between them is not reliable enough for true triangulation.
+
+## Final run order
+
+```powershell
+python find_mics.py
+python record_data.py
+python train_model.py
+python app.py
+```
